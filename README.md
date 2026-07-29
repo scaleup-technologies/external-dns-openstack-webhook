@@ -18,7 +18,7 @@ provider:
   name: webhook
   webhook:
     image:
-      repository: ghcr.io/inovex/external-dns-openstack-webhook
+      repository: ghcr.io/scaleup-technologies/external-dns-openstack-webhook
       tag: 2.1.0
     extraVolumeMounts:
       - name: oscloudsyaml

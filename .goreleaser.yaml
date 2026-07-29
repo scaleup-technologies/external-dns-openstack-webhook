@@ -43,7 +43,7 @@ dockers_v2:
       - linux/amd64
       - linux/arm64
     images:
-      - ghcr.io/inovex/{{ .ProjectName }}
+      - ghcr.io/scaleup-technologies/{{ .ProjectName }}
     build_args:
       BINARY_NAME: "{{ .ProjectName }}"
     tags:
@@ -62,12 +62,12 @@ checksum:
 # Configuration for GitHub Releases
 release:
   github:
-    owner: inovex
+    owner: scaleup-technologies
     name: external-dns-openstack-webhook
   footer: |
     ## Docker Images
-    - ghcr.io/inovex/external-dns-openstack-webhook:{{ trimprefix .Tag "v" }} (universal, multi-platform)
-    - ghcr.io/inovex/external-dns-openstack-webhook:{{ trimprefix .Tag "v" }}-amd64
-    - ghcr.io/inovex/external-dns-openstack-webhook:{{ trimprefix .Tag "v" }}-arm64
+    - ghcr.io/scaleup-technologies/external-dns-openstack-webhook:{{ trimprefix .Tag "v" }} (universal, multi-platform)
+    - ghcr.io/scaleup-technologies/external-dns-openstack-webhook:{{ trimprefix .Tag "v" }}-amd64
+    - ghcr.io/scaleup-technologies/external-dns-openstack-webhook:{{ trimprefix .Tag "v" }}-arm64
   prerelease: auto
   replace_existing_draft: true
