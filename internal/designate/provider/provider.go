@@ -19,6 +19,7 @@ package provider
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -255,12 +256,47 @@ func (p designateProvider) ApplyChanges(ctx context.Context, changes *plan.Chang
 		addEndpoint(ep, recordSets, endpoints, true)
 	}
 
+	// Apply deletions before creates/updates. Designate rejects a CNAME that shares its name with any
+	// other recordset, so when a name switches type (e.g. A -> CNAME) the old recordset must be gone
+	// before the new one is created. recordSets is a map, so the order would otherwise be random.
+	var deletions, upserts []*recordSet
 	for _, rs := range recordSets {
-		if err2 := p.upsertRecordSet(ctx, rs, managedZones); err == nil {
-			err = err2
+		if rs.isDeletion() {
+			deletions = append(deletions, rs)
+		} else {
+			upserts = append(upserts, rs)
 		}
 	}
-	return err
+	deleteErr := p.applyRecordSets(ctx, deletions, managedZones)
+	upsertErr := p.applyRecordSets(ctx, upserts, managedZones)
+	return errors.Join(deleteErr, upsertErr)
+}
+
+// applies all given recordset changes, continuing past failures so that one bad record does not block the rest
+func (p designateProvider) applyRecordSets(ctx context.Context, recordSets []*recordSet, managedZones map[string]string) error {
+	var errs []error
+	for _, rs := range recordSets {
+		if err := p.upsertRecordSet(ctx, rs, managedZones); err != nil {
+			errs = append(errs, err)
+		}
+	}
+	return errors.Join(errs...)
+}
+
+// returns the records that should remain in the recordset after the change is applied
+func (rs *recordSet) activeRecords() []string {
+	var records []string
+	for rec, v := range rs.names {
+		if v {
+			records = append(records, rec)
+		}
+	}
+	return records
+}
+
+// reports whether applying the change removes an existing recordset entirely
+func (rs *recordSet) isDeletion() bool {
+	return rs.recordSetID != "" && len(rs.activeRecords()) == 0
 }
 
 // apply recordset changes by inserting/updating/deleting recordsets
@@ -272,12 +308,7 @@ func (p designateProvider) upsertRecordSet(ctx context.Context, rs *recordSet, m
 			return nil
 		}
 	}
-	var records []string
-	for rec, v := range rs.names {
-		if v {
-			records = append(records, rec)
-		}
-	}
+	records := rs.activeRecords()
 	if rs.recordSetID == "" && records == nil {
 		return nil
 	}
